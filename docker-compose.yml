@@ -1,0 +1,14 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: collectpilot-db
+    environment:
+      POSTGRES_USER: collectpilot
+      POSTGRES_PASSWORD: collectpilot
+      POSTGRES_DB: collectpilot
+    ports:
+      - "5544:5432"
+    volumes:
+      - cpdata:/var/lib/postgresql/data
+volumes:
+  cpdata:

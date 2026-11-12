@@ -1,0 +1,416 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// All money is stored in minor units (cents) as integers.
+
+model Tenant {
+  id           String     @id @default(cuid())
+  name         String
+  baseCurrency String     @default("ETB")
+  googleTokens Json?
+  createdAt    DateTime   @default(now())
+  users        User[]
+  customers    Customer[]
+  policy       Policy?
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  email        String   @unique
+  name         String
+  role         String   @default("owner") // owner | clerk | readonly
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Customer {
+  id               String         @id @default(cuid())
+  tenantId         String
+  tenant           Tenant         @relation(fields: [tenantId], references: [id])
+  name             String
+  contactName      String?
+  email            String?
+  telegramChatId   String?
+  telegramLinkCode String?        @unique
+  phone            String?
+  language         String         @default("en") // en | am
+  preferredChannel String         @default("email") // email | telegram
+  creditLimitCents Int            @default(0)
+  termsDays        Int            @default(30)
+  segment          String         @default("reliable")
+  riskScore        Int            @default(0)
+  riskDrivers      Json?
+  creditHold       Boolean        @default(false)
+  optOut           Boolean        @default(false)
+  lastContactedAt  DateTime?
+  createdAt        DateTime       @default(now())
+  invoices         Invoice[]
+  payments         Payment[]
+  interactions     Interaction[]
+  promises         PromiseToPay[]
+  plans            PaymentPlan[]
+  disputes         Dispute[]
+  memories         Memory[]
+
+  @@index([tenantId])
+}
+
+model Invoice {
+  id               String        @id @default(cuid())
+  tenantId         String
+  customerId       String
+  customer         Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  number           String
+  issueDate        DateTime
+  dueDate          DateTime
+  currency         String        @default("ETB")
+  amountCents      Int
+  paidCents        Int           @default(0)
+  disputedCents    Int           @default(0)
+  status           String        @default("open") // open | partial | paid | claimed | disputed | written_off
+  paidAt           DateTime?
+  predictedPayDate DateTime?
+  reminderStage    Int           @default(0)
+  lastReminderAt   DateTime?
+  pausedUntil      DateTime?
+  source           String        @default("manual") // manual | csv | sheet | extraction | seed
+  lines            InvoiceLine[]
+  allocations      Allocation[]
+  createdAt        DateTime      @default(now())
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@index([customerId])
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Float   @default(1)
+  unitCents   Int
+  totalCents  Int
+}
+
+model Payment {
+  id              String       @id @default(cuid())
+  tenantId        String
+  customerId      String?
+  customer        Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  date            DateTime
+  amountCents     Int
+  currency        String       @default("ETB")
+  reference       String?
+  narration       String?
+  payerName       String?
+  source          String       @default("statement") // statement | email | manual | proof
+  status          String       @default("unmatched") // unmatched | suggested | matched | unapplied
+  matchConfidence Float?
+  matchReason     String?
+  suggestion      Json?
+  unappliedCents  Int          @default(0)
+  allocations     Allocation[]
+  createdAt       DateTime     @default(now())
+
+  @@index([tenantId, status])
+}
+
+model Allocation {
+  id          String   @id @default(cuid())
+  paymentId   String
+  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amountCents Int
+  createdAt   DateTime @default(now())
+}
+
+model PaymentProof {
+  id          String    @id @default(cuid())
+  tenantId    String
+  customerId  String
+  invoiceId   String?
+  filePath    String?
+  mimeType    String?
+  amountCents Int?
+  date        DateTime?
+  reference   String?
+  bank        String?
+  confidence  Float?
+  status      String    @default("claimed") // claimed | confirmed | rejected | review
+  paymentId   String?
+  raw         Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId, status])
+}
+
+model PromiseToPay {
+  id              String    @id @default(cuid())
+  tenantId        String
+  customerId      String
+  customer        Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  invoiceId       String?
+  amountCents     Int
+  dueDate         DateTime
+  status          String    @default("open") // open | kept | broken | cancelled
+  source          String    @default("agent") // agent | portal | manual
+  calendarEventId String?
+  createdAt       DateTime  @default(now())
+  resolvedAt      DateTime?
+
+  @@index([tenantId, status])
+}
+
+model PaymentPlan {
+  id            String       @id @default(cuid())
+  tenantId      String
+  customerId    String
+  customer      Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  invoiceIds    String[]
+  totalCents    Int
+  label         String
+  status        String       @default("offered") // offered | active | completed | defaulted | cancelled
+  offerGroup    String?
+  discountCents Int          @default(0)
+  instalments   Instalment[]
+  createdAt     DateTime     @default(now())
+  acceptedAt    DateTime?
+
+  @@index([tenantId, status])
+}
+
+model Instalment {
+  id              String      @id @default(cuid())
+  planId          String
+  plan            PaymentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  seq             Int
+  dueDate         DateTime
+  amountCents     Int
+  paidCents       Int         @default(0)
+  status          String      @default("due") // due | claimed | paid | missed
+  calendarEventId String?
+}
+
+model Dispute {
+  id            String    @id @default(cuid())
+  tenantId      String
+  customerId    String
+  customer      Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  invoiceId     String
+  category      String // pricing | quantity | quality | delivery | duplicate | other
+  description   String
+  disputedCents Int
+  stage         String    @default("opened") // opened | evidence | proposed | resolved | rejected
+  evidence      Json      @default("[]")
+  proposal      Json?
+  resolution    String?
+  creditNoteId  String?
+  createdAt     DateTime  @default(now())
+  resolvedAt    DateTime?
+
+  @@index([tenantId, stage])
+}
+
+model CreditNote {
+  id          String   @id @default(cuid())
+  tenantId    String
+  customerId  String
+  invoiceId   String
+  number      String
+  amountCents Int
+  reason      String
+  status      String   @default("draft") // draft | issued
+  createdAt   DateTime @default(now())
+}
+
+model Interaction {
+  id         String   @id @default(cuid())
+  tenantId   String
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  invoiceId  String?
+  direction  String // out | in | internal
+  channel    String // email | telegram | portal | system | call
+  kind       String   @default("message") // message | reminder | plan_offer | proof | voice | note | brief
+  subject    String?
+  body       String
+  tone       String?
+  intent     String?
+  meta       Json?
+  status     String   @default("sent") // sent | simulated | blocked | failed | received | draft
+  armKey     String?
+  rewarded   Boolean  @default(false)
+  externalId String?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, customerId])
+  @@index([externalId])
+}
+
+model Document {
+  id         String   @id @default(cuid())
+  tenantId   String
+  customerId String?
+  kind       String // invoice | proof | evidence | statement | credit_note
+  filePath   String
+  mimeType   String
+  extracted  Json?
+  status     String   @default("new") // new | extracted | confirmed
+  createdAt  DateTime @default(now())
+}
+
+model Approval {
+  id         String    @id @default(cuid())
+  tenantId   String
+  agent      String
+  actionType String
+  customerId String?
+  invoiceId  String?
+  title      String
+  reason     String
+  payload    Json
+  status     String    @default("pending") // pending | approved | rejected | executed
+  decidedBy  String?
+  decidedAt  DateTime?
+  agentRunId String?
+  createdAt  DateTime  @default(now())
+
+  @@index([tenantId, status])
+}
+
+model Policy {
+  id                    String   @id @default(cuid())
+  tenantId              String   @unique
+  tenant                Tenant   @relation(fields: [tenantId], references: [id])
+  autonomy              Json // { actionType: shadow | assisted | autonomous }
+  maxInstalments        Int      @default(4)
+  minUpfrontPct         Int      @default(25)
+  maxPlanDays           Int      @default(45)
+  earlyPayDiscountPct   Float    @default(0)
+  maxDiscountPct        Float    @default(2)
+  maxContactsPerDay     Int      @default(1)
+  quietStartHour        Int      @default(19)
+  quietEndHour          Int      @default(8)
+  creditHoldRisk        Int      @default(70)
+  creditHoldDaysOverdue Int      @default(45)
+  autoMatchConfidence   Float    @default(0.9)
+  minIntentConfidence   Float    @default(0.7)
+  timezone              String   @default("Africa/Addis_Ababa")
+  updatedAt             DateTime @updatedAt
+}
+
+model StrategyArm {
+  id       String @id @default(cuid())
+  tenantId String
+  segment  String
+  tone     String
+  channel  String
+  window   String // morning | midday | afternoon
+  pulls    Int    @default(0)
+  rewards  Float  @default(0)
+
+  @@unique([tenantId, segment, tone, channel, window])
+}
+
+model AgentRun {
+  id         String      @id @default(cuid())
+  tenantId   String
+  trigger    String
+  customerId String?
+  invoiceId  String?
+  summary    String?
+  status     String      @default("running") // running | done | failed
+  startedAt  DateTime    @default(now())
+  finishedAt DateTime?
+  steps      AgentStep[]
+
+  @@index([tenantId, startedAt])
+}
+
+model AgentStep {
+  id        String   @id @default(cuid())
+  runId     String
+  run       AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  seq       Int
+  agent     String
+  action    String
+  input     Json?
+  reasoning String?
+  output    Json?
+  tool      String?
+  ms        Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  actor     String
+  action    String
+  entity    String?
+  entityId  String?
+  detail    Json?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+}
+
+model ForecastSnapshot {
+  id        String   @id @default(cuid())
+  tenantId  String
+  weeks     Json
+  createdAt DateTime @default(now())
+}
+
+model Job {
+  id         String    @id @default(cuid())
+  tenantId   String
+  type       String
+  payload    Json
+  dedupeKey  String?   @unique
+  status     String    @default("queued") // queued | running | done | failed
+  attempts   Int       @default(0)
+  runAfter   DateTime  @default(now())
+  lastError  String?
+  createdAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  @@index([status, runAfter])
+}
+
+model Memory {
+  id         String                      @id @default(cuid())
+  tenantId   String
+  customerId String
+  customer   Customer                    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  text       String
+  kind       String                      @default("note")
+  embedding  Unsupported("vector(768)")?
+  createdAt  DateTime                    @default(now())
+
+  @@index([customerId])
+}
+
+model PortalToken {
+  id         String   @id @default(cuid())
+  tenantId   String
+  customerId String
+  token      String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+}
+
+model KV {
+  key   String @id
+  value Json
+}

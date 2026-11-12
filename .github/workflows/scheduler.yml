@@ -1,0 +1,30 @@
+# Free fallback for Cloud Scheduler: triggers the proactive jobs on the deployed API.
+# Set repository secrets API_URL (e.g. https://your-api.example.com) and JOB_SECRET.
+name: CollectPilot scheduler
+on:
+  schedule:
+    - cron: '0 5 * * *'      # daily run, 08:00 Addis Ababa
+    - cron: '15 * * * *'     # hourly inbox and payment sync
+    - cron: '0 6 * * 1'      # weekly report, Monday 09:00 Addis Ababa
+  workflow_dispatch:
+    inputs:
+      job:
+        description: daily, hourly, or weekly
+        default: daily
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call job endpoint
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          JOB_SECRET: ${{ secrets.JOB_SECRET }}
+          SCHEDULE: ${{ github.event.schedule }}
+          MANUAL: ${{ github.event.inputs.job }}
+        run: |
+          case "${MANUAL:-$SCHEDULE}" in
+            daily|"0 5 * * *") JOB=daily ;;
+            weekly|"0 6 * * 1") JOB=weekly ;;
+            *) JOB=hourly ;;
+          esac
+          curl -fsS -X POST "$API_URL/jobs/$JOB" -H "x-job-secret: $JOB_SECRET"

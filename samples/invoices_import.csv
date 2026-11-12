@@ -1,0 +1,5 @@
+Customer,Invoice No,Invoice Date,Due Date,Amount,Currency,Email,Description
+Tana Supermarket,INV-1070,2026-11-10,2026-12-10,86400.00,ETB,,Cooking oil and rice
+Selam Pharmacy,INV-1071,2026-11-11,2026-12-11,42750.00,ETB,,Bottled water and tea
+Jimma Coffee House,INV-1072,2026-11-05,2026-12-05,58200.00,ETB,orders@jimma-coffee.example.com,Sugar and biscuits
+Gondar Agro Supplies,INV-1073,2026-11-12,2026-12-12,129000.00,ETB,,Wheat flour 50kg bags
