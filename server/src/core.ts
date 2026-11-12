@@ -1,5 +1,5 @@
 // Shared services: policy loading, autonomy gate, approvals, portal links, owner notifications.
-import jwt from 'jsonwebtoken';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { cfg } from './config.js';
 import { db, audit } from './db.js';
 import { autonomyFor, defaultAutonomy, type Autonomy } from './engines/policy.js';
@@ -11,13 +11,20 @@ export async function getPolicy(tenantId: string) {
 }
 export type Policy = Awaited<ReturnType<typeof getPolicy>>;
 
-/** Signed, single-customer, expiring portal link (no login). */
-export function portalLink(tenantId: string, customerId: string, days = 14) {
-  const token = jwt.sign({ tid: tenantId, cid: customerId, p: 1 }, cfg.jwtSecret, { expiresIn: `${days}d` });
-  return `${cfg.publicUrl}/portal/${token}`;
+/** Signed, single-customer, expiring portal link (no login). Short enough for a chat message: <customerId>.<expiry>.<HMAC>. */
+const sign = (cid: string, exp: string) => createHmac('sha256', cfg.jwtSecret).update(`portal:${cid}:${exp}`).digest('base64url').slice(0, 22);
+export function portalLink(_tenantId: string, customerId: string, days = 14) {
+  const exp = Math.floor(Date.now() / 1000 + days * 86400).toString(36);
+  return `${cfg.publicUrl}/portal/${customerId}.${exp}.${sign(customerId, exp)}`;
 }
-export function verifyPortal(token: string): { tid: string; cid: string } | null {
-  try { const p = jwt.verify(token, cfg.jwtSecret) as any; return p?.p === 1 ? { tid: p.tid, cid: p.cid } : null; } catch { return null; }
+export async function verifyPortal(token: string): Promise<{ tid: string; cid: string } | null> {
+  const [cid, exp, sig] = token.split('.');
+  if (!cid || !exp || !sig) return null;
+  const want = Buffer.from(sign(cid, exp)), got = Buffer.from(sig);
+  if (want.length !== got.length || !timingSafeEqual(want, got)) return null;
+  if (parseInt(exp, 36) * 1000 < Date.now()) return null;
+  const c = await db.customer.findUnique({ where: { id: cid }, select: { tenantId: true } });
+  return c ? { tid: c.tenantId, cid } : null;
 }
 
 export interface Proposal {

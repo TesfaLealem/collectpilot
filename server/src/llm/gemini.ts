@@ -12,21 +12,43 @@ export const llmStats = { calls: 0, failures: 0, lastError: '' };
 let chain: Promise<unknown> = Promise.resolve();
 let lastCall = 0;
 const GAP_MS = Number(process.env.GEMINI_MIN_GAP_MS ?? 1500);
+const TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS ?? 45000);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function queued<T>(fn: () => Promise<T>): Promise<T> {
+// Model fallback chain: when the preferred model is overloaded, retired, or slow, the next one is tried.
+// The model that last answered is preferred for five minutes so a busy model is not retried on every call.
+const MODELS = [...new Set([cfg.geminiModel, ...(process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.5-flash,gemini-flash-latest,gemini-3.7-flash').split(',').map((m) => m.trim()).filter(Boolean)])];
+let good: { model: string; at: number } | null = null;
+let openUntil = 0;
+export const activeModel = () => (good && Date.now() - good.at < 300_000 ? good.model : MODELS[0]);
+
+function queued<T>(fn: (model: string) => Promise<T>): Promise<T> {
   const run = async () => {
-    for (let attempt = 0; ; attempt++) {
+    // Circuit breaker: after every model has failed, skip the model for a minute so callers fall back immediately.
+    if (Date.now() < openUntil) throw new Error('Gemini temporarily unavailable (circuit open)');
+    const first = activeModel();
+    const order = [first, ...MODELS.filter((m) => m !== first)];
+    let lastErr: unknown;
+    for (const model of order) {
       const wait = lastCall + GAP_MS - Date.now();
       if (wait > 0) await sleep(wait);
       lastCall = Date.now();
-      try { llmStats.calls++; return await fn(); } catch (e: any) {
+      try {
+        llmStats.calls++;
+        const out = await Promise.race([fn(model), new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`timeout after ${TIMEOUT_MS} ms (${model})`)), TIMEOUT_MS))]);
+        good = { model, at: Date.now() };
+        return out;
+      } catch (e: any) {
+        lastErr = e;
         const msg = String(e?.message ?? e);
-        const retryable = /429|RESOURCE_EXHAUSTED|503|UNAVAILABLE|overloaded/i.test(msg);
-        if (!retryable || attempt >= 2) { llmStats.failures++; llmStats.lastError = msg.slice(0, 300); throw e; }
-        await sleep(8000 * (attempt + 1));
+        llmStats.lastError = `${model}: ${msg.slice(0, 260)}`;
+        if (!/429|RESOURCE_EXHAUSTED|503|UNAVAILABLE|overloaded|high demand|404|no longer available|timeout|fetch failed|ECONN|500|INTERNAL/i.test(msg)) break; // not worth trying another model
+        if (good?.model === model) good = null;
       }
     }
+    llmStats.failures++;
+    openUntil = Date.now() + 60_000;
+    throw lastErr;
   };
   const p = chain.then(run, run);
   chain = p.catch(() => undefined);
@@ -42,8 +64,8 @@ export interface GenOpts { system?: string; prompt: string; parts?: Part[]; temp
 export async function genJSON<T>(opts: GenOpts & { schema: object }): Promise<T | null> {
   if (!llmAvailable()) return null;
   try {
-    const res = await queued(() => ai().models.generateContent({
-      model: cfg.geminiModel,
+    const res = await queued((model) => ai().models.generateContent({
+      model,
       contents: [{ role: 'user', parts: [...(opts.parts ?? []), { text: opts.prompt }] as any }],
       config: { systemInstruction: opts.system, temperature: opts.temperature ?? 0.2, responseMimeType: 'application/json', responseSchema: opts.schema as any },
     }));
@@ -54,8 +76,8 @@ export async function genJSON<T>(opts: GenOpts & { schema: object }): Promise<T 
 export async function genText(opts: GenOpts): Promise<string | null> {
   if (!llmAvailable()) return null;
   try {
-    const res = await queued(() => ai().models.generateContent({
-      model: cfg.geminiModel,
+    const res = await queued((model) => ai().models.generateContent({
+      model,
       contents: [{ role: 'user', parts: [...(opts.parts ?? []), { text: opts.prompt }] as any }],
       config: { systemInstruction: opts.system, temperature: opts.temperature ?? 0.4 },
     }));
@@ -72,8 +94,8 @@ export async function genWithTools(opts: { system: string; history: { role: 'use
   const calls: { name: string; args: any; result: unknown }[] = [];
   try {
     for (let step = 0; step < (opts.maxSteps ?? 6); step++) {
-      const res = await queued(() => ai().models.generateContent({
-        model: cfg.geminiModel, contents,
+      const res = await queued((model) => ai().models.generateContent({
+        model, contents,
         config: { systemInstruction: opts.system, temperature: 0.2, tools: [{ functionDeclarations: opts.tools as any }] },
       }));
       const fcs = res.functionCalls ?? [];

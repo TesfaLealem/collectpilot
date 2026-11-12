@@ -26,7 +26,7 @@ import { traced } from '../trace.js';
 import { authUrl, googleConfigured, googleConnected, handleCallback, sheetsRead } from '../integrations/google.js';
 import { botUsername, telegramConfigured } from '../integrations/telegram.js';
 import { ensureFx, rates, toBase } from '../integrations/fx.js';
-import { llmAvailable, llmStats } from '../llm/gemini.js';
+import { activeModel, llmAvailable, llmStats } from '../llm/gemini.js';
 import { parseDateLoose, startOfDay, toCents } from '../util.js';
 
 const ALLOWED_UPLOAD = /^(image\/(jpeg|png|webp|heic)|application\/pdf|text\/csv|text\/plain|application\/vnd\.ms-excel|audio\/(ogg|mpeg|mp4|wav|webm))$/;
@@ -55,7 +55,7 @@ const T = (req: { user: { tid: string } }) => req.user.tid;
 api.get('/me', h(async (req, res) => { const t = await db.tenant.findUniqueOrThrow({ where: { id: T(req) } }); res.json({ user: req.user, tenant: { name: t.name, baseCurrency: t.baseCurrency } }); }));
 
 api.get('/status', h(async (req, res) => res.json({
-  gemini: { configured: llmAvailable(), model: cfg.geminiModel, ...llmStats },
+  gemini: { configured: llmAvailable(), model: activeModel(), ...llmStats },
   telegram: { configured: telegramConfigured(), bot: await botUsername(), ownerChat: !!cfg.ownerChatId },
   google: { configured: googleConfigured(), connected: await googleConnected(T(req)) },
   demoMode: cfg.demoMode, allowedEmails: cfg.allowedEmails.length, allowedChats: cfg.allowedChats.length,

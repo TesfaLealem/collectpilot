@@ -21,8 +21,8 @@ export const portal = Router();
 
 // Simple per-token rate limit for an unauthenticated surface.
 const hits = new Map<string, { n: number; at: number }>();
-portal.use('/:token', (req, res, next) => {
-  const who = verifyPortal(req.params.token);
+portal.use('/:token', async (req, res, next) => {
+  const who = await verifyPortal(req.params.token).catch(() => null);
   if (!who) return res.status(401).json({ error: 'This link is invalid or has expired. Please ask for a new one.' });
   const k = who.cid, now = Date.now(), e = hits.get(k);
   if (!e || now - e.at > 60_000) hits.set(k, { n: 1, at: now });

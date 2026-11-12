@@ -8,7 +8,7 @@ export const cfg = {
   jobSecret: process.env.JOB_SECRET ?? 'dev-job-secret',
   publicUrl: (process.env.PUBLIC_URL ?? 'http://localhost:5173').replace(/\/$/, ''),
   geminiKey: process.env.GEMINI_API_KEY ?? '',
-  geminiModel: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash',
+  geminiModel: process.env.GEMINI_MODEL ?? 'gemini-3.8-flash',
   telegramToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
   ownerChatId: process.env.OWNER_TELEGRAM_CHAT_ID ?? '',
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',

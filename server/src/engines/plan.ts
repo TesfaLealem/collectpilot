@@ -37,9 +37,9 @@ export function generatePlanOptions(totalCents: number, policy: PlanPolicy, toda
   }
   const n = Math.min(policy.maxInstalments, 3);
   if (n >= 3 && policy.maxPlanDays >= 14) {
-    const first = Math.max(Math.round(100 / n), up);
-    const rest = (100 - first) / (n - 1);
-    opts.push(buildPlan(`${n} weekly instalments`, totalCents, [first, ...Array(n - 1).fill(rest)], Array.from({ length: n }, (_, i) => i * 7), today));
+    // Equal instalments unless policy demands a larger first payment.
+    const shares = 100 / n >= up ? Array(n).fill(1) : [up, ...Array(n - 1).fill((100 - up) / (n - 1))];
+    opts.push(buildPlan(`${n} weekly instalments`, totalCents, shares, Array.from({ length: n }, (_, i) => i * 7), today));
   }
   if (policy.maxInstalments >= 4 && policy.maxPlanDays >= 42) {
     const first = Math.max(25, up);
