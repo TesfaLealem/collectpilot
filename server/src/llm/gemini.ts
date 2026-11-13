@@ -47,7 +47,7 @@ function queued<T>(fn: (model: string) => Promise<T>): Promise<T> {
       }
     }
     llmStats.failures++;
-    openUntil = Date.now() + 60_000;
+    if (/429|RESOURCE_EXHAUSTED|503|UNAVAILABLE|overloaded|high demand|timeout|fetch failed|ECONN/i.test(String((lastErr as any)?.message ?? lastErr))) openUntil = Date.now() + 60_000;
     throw lastErr;
   };
   const p = chain.then(run, run);
@@ -100,7 +100,8 @@ export async function genWithTools(opts: { system: string; history: { role: 'use
       }));
       const fcs = res.functionCalls ?? [];
       if (!fcs.length) return { text: res.text ?? '', calls };
-      contents.push({ role: 'model', parts: fcs.map((fc) => ({ functionCall: { name: fc.name, args: fc.args } })) });
+      // Echo the model's own turn back unchanged: newer models attach thought signatures to function calls and reject reconstructed parts.
+      contents.push(res.candidates?.[0]?.content ?? { role: 'model', parts: fcs.map((fc) => ({ functionCall: { name: fc.name, args: fc.args } })) });
       const responses: any[] = [];
       for (const fc of fcs) {
         let result: unknown;
