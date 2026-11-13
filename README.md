@@ -5,6 +5,8 @@ Six specialist AI agents, coordinated by an event-driven orchestrator, chase ove
 
 Built for the "AI Automation Assignment – Full Stack AI Software Engineer". Design document: `docs/CollectPilot_Solution_Design_v2.pdf`.
 
+**Live demo:** https://collectpilot.onrender.com (free hosting: the first load after a quiet period can take up to a minute). Demo sign-in details are shared separately.
+
 ## What it does
 
 | Agent | Job | Autonomy by default |
@@ -57,7 +59,7 @@ npm install
 npm run dev                          # app on http://localhost:5173
 ```
 
-Sign in with `owner@bluenile.example.com`. The seed password is `demo1234` unless `SEED_PASSWORD` is set when seeding. `clerk@…` and `viewer@…` demonstrate the other roles. These are local test accounts only.
+Sign in with `owner@bluenile.example.com`. On a local copy the seed password is `demo1234` unless `SEED_PASSWORD` is set when seeding (the hosted demo uses a different one). `clerk@…` and `viewer@…` demonstrate the other roles. These are local test accounts only.
 
 ### Configuration (`server/.env`)
 
@@ -101,10 +103,22 @@ The evaluation set is small (36 replies, 14 payments) and hand-written, so it is
 - Uploads are type- and size-checked. Secrets live in `.env`, never in code.
 - A proof of payment never marks an invoice paid. It becomes "payment claimed" until a bank line confirms it.
 
+## Deployment
+
+One Docker image (`Dockerfile`) builds the web app and runs the API, which serves both. `render.yaml` describes the free Render web service; the database is a free Neon PostgreSQL with pgvector. On first start `server/scripts/start.sh` enables the vector extension, creates the tables, and seeds demo data only if the database is empty.
+
+## Differences from the design document
+
+- **Model:** the design names Gemini 2.5 Flash. Google no longer offers it to new API accounts, so the app uses the current Flash models (`gemini-3.5-flash` first) with automatic failover between models and a circuit breaker, because the free tier is often overloaded.
+- **Gmail, Calendar, Sheets, Drive:** fully implemented behind one OAuth connection, but not connected on the hosted demo. There, emails and calendar checks are recorded as "simulated"; Telegram is the live channel.
+- **Hosting:** Render and Neon free tiers instead of Cloud Run, with the GitHub Actions cron as the scheduler.
+
 ## Honest limitations
 
 - The demo data, including payment history and the starting bandit statistics, is synthetic (generated in `server/src/seed.ts`).
 - The rule-based fallback understands English well and Amharic poorly; Amharic understanding relies on Gemini. Amharic templates were written by the author and should be reviewed by a native editor before production use.
 - Payment-date prediction is a transparent statistical rule (median of the customer's history), not a trained model.
+- On the free Gemini tier, calls sometimes fail or time out. The app then falls back to rules and templates, so behaviour is slightly less capable at those moments (for example Amharic replies go to human review).
+- Uploaded files on the hosted demo live on the container's disk and are lost on redeploy.
 - One instance runs the job worker; scaling out would need row locking on the job table.
 - WhatsApp, direct bank feeds, and accounting integrations are on the roadmap, not built.
