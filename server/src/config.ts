@@ -6,7 +6,7 @@ export const cfg = {
   port: Number(process.env.PORT ?? 4000),
   jwtSecret: process.env.JWT_SECRET ?? 'dev-secret',
   jobSecret: process.env.JOB_SECRET ?? 'dev-job-secret',
-  publicUrl: (process.env.PUBLIC_URL ?? 'http://localhost:5173').replace(/\/$/, ''),
+  publicUrl: (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:5173').replace(/\/$/, ''),
   geminiKey: process.env.GEMINI_API_KEY ?? '',
   geminiModel: process.env.GEMINI_MODEL ?? 'gemini-3.8-flash',
   telegramToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
