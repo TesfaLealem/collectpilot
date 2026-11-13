@@ -109,5 +109,5 @@ export async function copilot(tenantId: string, history: { role: 'user' | 'model
   else if (/roi|saved|value|worth/.test(q)) name = 'get_roi';
   else if (named) { name = 'get_customer'; args = { name: named.name }; }
   const result = await T[name].run(args);
-  return { answer: `(Gemini is not configured, so this is the raw result of "${name}".)\n\n${JSON.stringify(result, null, 2)}`, calls: [{ name, args }], plan: pending, source: 'rules' };
+  return { answer: `(Gemini is unavailable right now, so this is the raw result of "${name}".)\n\n${JSON.stringify(result, null, 2)}`, calls: [{ name, args }], plan: pending, source: 'rules' };
 }

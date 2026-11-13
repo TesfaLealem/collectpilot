@@ -12,12 +12,12 @@ export const llmStats = { calls: 0, failures: 0, lastError: '' };
 let chain: Promise<unknown> = Promise.resolve();
 let lastCall = 0;
 const GAP_MS = Number(process.env.GEMINI_MIN_GAP_MS ?? 1500);
-const TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS ?? 45000);
+const TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS ?? 20000);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Model fallback chain: when the preferred model is overloaded, retired, or slow, the next one is tried.
 // The model that last answered is preferred for five minutes so a busy model is not retried on every call.
-const MODELS = [...new Set([cfg.geminiModel, ...(process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.5-flash,gemini-flash-latest,gemini-3.7-flash').split(',').map((m) => m.trim()).filter(Boolean)])];
+const MODELS = [...new Set([cfg.geminiModel, ...(process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.5-flash,gemini-3.8-flash,gemini-flash-latest,gemini-3.1-flash-lite').split(',').map((m) => m.trim()).filter(Boolean)])];
 let good: { model: string; at: number } | null = null;
 let openUntil = 0;
 export const activeModel = () => (good && Date.now() - good.at < 300_000 ? good.model : MODELS[0]);
