@@ -59,11 +59,11 @@ npm install
 npm run dev                          # app on http://localhost:5173
 ```
 
-Sign in with `owner@bluenile.example.com`. On https://collectpilot.onrender.com/login the seed password is `demo1234` unless `SEED_PASSWORD` is set when seeding (the hosted demo uses a different one). `clerk@…` and `viewer@…` demonstrate the other roles. These are local test accounts only.
+Sign in with `owner@bluenile.example.com`. On a local copy the password is `demo1234`, unless `SEED_PASSWORD` was set when seeding. The hosted demo uses a different password, shared separately. `clerk@…` and `viewer@…` demonstrate the other roles. These are test accounts only.
 
 ### Configuration (`server/.env`)
 
-Everything is optional. With nothing configured the whole product still runs. notice that falls back to rules, messages use templates, and emails / Telegram messages / calendar events are recorded as "simulated".
+Everything is optional. With nothing configured the whole product still runs: reply understanding falls back to rules, messages use templates, and emails, Telegram messages and calendar events are recorded as "simulated".
 
 | Variable | What it enables | Where to get it (free)                                                                                                                                                                          |
 |---|---|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
