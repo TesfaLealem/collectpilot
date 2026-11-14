@@ -9,14 +9,14 @@ Built for the "AI Automation Assignment – Full Stack AI Software Engineer". De
 
 ## What it does
 
-| Agent | Job | Autonomy by default |
-|---|---|---|
+| Agent | Job                                                                                                                                           | Autonomy by default |
+|---|-----------------------------------------------------------------------------------------------------------------------------------------------|---|
 | **Analyst** | Explainable risk score (0–100), behavioural segments, per-invoice payment-date prediction, 13-week cash forecast, credit hold, anomaly alerts | Autonomous |
-| **Strategist** | Next best action per account; a UCB bandit picks tone × channel × send window per segment | Autonomous |
-| **Communicator** | Writes reminders in English or Amharic; sends by Gmail or Telegram | Autonomous; final notices need approval |
-| **Negotiator** | Understands replies (text and voice notes), records promises, offers and activates payment plans within policy | Autonomous inside policy |
-| **Reconciler** | Matches bank-statement lines and payment emails to invoices; reads photographed transfer slips | Autonomous above a confidence threshold |
-| **Dispute agent** | Classifies disputes, sets the disputed amount aside, collects evidence, proposes a resolution | Assisted (a person approves) |
+| **Strategist** | Next best action per account: a UCB bandit picks tone × channel × send window per segment                                                     | Autonomous |
+| **Communicator** | Writes reminders in English or Amharic, sends by Gmail or Telegram                                                                            | Autonomous; final notices need approval |
+| **Negotiator** | Understands replies (text and voice notes), records promises, offers and activates payment plans within policy                                | Autonomous inside policy |
+| **Reconciler** | Matches bank-statement lines and payment emails to invoices, reads photographed transfer slips                                                | Autonomous above a confidence threshold |
+| **Dispute agent** | Classifies disputes, sets the disputed amount aside, collects evidence, proposes a resolution                                                 | Assisted (a person approves) |
 
 Around them: a **policy engine** (autonomy level per action, plan limits, contact frequency, quiet hours, opt-out), an **agent trace** for every decision, a **customer self-service portal** (signed expiring link, no login), an **owner copilot** with what-if simulation and plan previews, an **ROI panel**, and an **evaluation suite**.
 
@@ -65,14 +65,14 @@ Sign in with `owner@bluenile.example.com`. On https://collectpilot.onrender.com/
 
 Everything is optional. With nothing configured the whole product still runs. notice that falls back to rules, messages use templates, and emails / Telegram messages / calendar events are recorded as "simulated".
 
-| Variable | What it enables | Where to get it (free) |
-|---|---|---|
-| `GEMINI_API_KEY` | Message drafting, reply understanding, vision (invoices, transfer slips), voice notes, embeddings, copilot | Google AI Studio, no card |
-| `TELEGRAM_BOT_TOKEN` | Customer chat and owner briefings | @BotFather |
-| `OWNER_TELEGRAM_CHAT_ID` | Daily briefing to your Telegram | Send `/start` to your bot; it replies with the id |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Gmail send/read, Calendar checks, Sheets import, Drive | Google Cloud console → OAuth client (Web), redirect `http://localhost:4000/api/google/callback`; enable the Gmail, Calendar, Sheets, and Drive APIs; then "Connect Google" in Policy & settings |
-| `DEMO_MODE`, `ALLOWED_EMAILS`, `ALLOWED_TELEGRAM_CHAT_IDS` | **Safety.** In demo mode only allow-listed recipients get real messages | Your own test mailbox / chat id |
-| `DEMO_CUSTOMER_EMAIL`, `DEMO_CUSTOMER_CHAT_ID` (at seed time) | Points the customer "Abebe Trading PLC" at your test mailbox / chat | – |
+| Variable | What it enables | Where to get it (free)                                                                                                                                                                          |
+|---|---|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GEMINI_API_KEY` | Message drafting, reply understanding, vision (invoices, transfer slips), voice notes, embeddings, copilot | Google AI Studio, no card                                                                                                                                                                       |
+| `TELEGRAM_BOT_TOKEN` | Customer chat and owner briefings | @BotFather                                                                                                                                                                                      |
+| `OWNER_TELEGRAM_CHAT_ID` | Daily briefing to your Telegram | Send `/start` to your bot, it replies with the id                                                                                                                                               |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Gmail send/read, Calendar checks, Sheets import, Drive | Google Cloud console → OAuth client (Web), redirect `http://localhost:4000/api/google/callback`. enable the Gmail, Calendar, Sheets, and Drive APIs; then "Connect Google" in Policy & settings |
+| `DEMO_MODE`, `ALLOWED_EMAILS`, `ALLOWED_TELEGRAM_CHAT_IDS` | **Safety.** In demo mode only allow-listed recipients get real messages | Your own test mailbox / chat id                                                                                                                                                                 |
+| `DEMO_CUSTOMER_EMAIL`, `DEMO_CUSTOMER_CHAT_ID` (at seed time) | Points the customer "Abebe Trading PLC" at your test mailbox / chat | –                                                                                                                                                                                               |
 
 ## A five-minute tour
 
