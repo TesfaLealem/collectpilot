@@ -37,7 +37,7 @@ server/   Node.js + TypeScript + Express + Zod + Prisma
 PostgreSQL + pgvector (customer memory embeddings)
 ```
 
-Scheduling: `POST /jobs/daily`, `/jobs/hourly`, `/jobs/weekly` with the `x-job-secret` header. Use Cloud Scheduler (three free jobs) or the GitHub Actions cron in `.github/workflows/scheduler.yml`.
+Scheduling: `POST /jobs/daily`, `/jobs/hourly`, `/jobs/weekly` with the `x-job-secret` header. Use Cloud Scheduler (three free jobs) or the GitHub Actions cron in `.github/workflows/scheduler.yml`. The hosted demo uses the GitHub Actions cron: the daily cycle runs at 08:00 Addis Ababa time, the inbox and payment sync every hour, and the weekly report on Mondays.
 
 ## Run it locally
 
